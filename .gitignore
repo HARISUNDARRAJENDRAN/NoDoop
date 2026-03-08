@@ -17,6 +17,7 @@ coverage.out
 
 # DFS runtime storage directories
 *_dfs/
+/dfs_bridge_data/
 
 # Logs
 *.log

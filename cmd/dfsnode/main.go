@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"nodoop/dfs"
-	"nodoop/dfs/p2p"
+	dfs "nodoop/distributed_filesys"
+	p2p "nodoop/distributed_filesys/peer2peer"
 )
 
 func makeServer(listenAddr string, encKey []byte, nodes ...string) *dfs.FileServer {

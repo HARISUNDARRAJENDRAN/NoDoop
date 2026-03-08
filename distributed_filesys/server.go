@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"nodoop/dfs/p2p"
+	p2p "nodoop/distributed_filesys/peer2peer"
 )
 
 type FileServerOpts struct {
