@@ -1,4 +1,6 @@
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8080";
+const API_URL = (
+  import.meta.env.VITE_API_URL || "http://localhost:8080"
+).replace(/\/+$/, "");
 const REQUEST_TIMEOUT_MS = 15000;
 
 async function request(path, { token, ...options } = {}) {
