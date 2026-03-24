@@ -1,80 +1,125 @@
 # NoDoop
 
-**NoDoop** is a polyglot microservice application that combines a highly available collaborative document
-editor with distributed data storage to bridge the gap between real‑time synchronization and scalable
-persistence.
+**NoDoop** is a Google Docs-style collaborative document editor built on the MERN stack with a custom Go-based distributed file system for fault-tolerant version storage.
 
-## Key Features
+## Features
 
-- **Collaborative Editor** – A fault‑tolerant, real‑time document editor built for high availability.
-- **Distributed Data Storage** – Seamlessly syncs edits while persisting data across services.
+- **Real-time Collaboration** - Multiple users edit simultaneously via Socket.IO + Yjs CRDT
+- **Rich Text Editor** - TipTap-powered editor with headings, formatting, tables, images, lists, and more
+- **Document Dashboard** - Search, template gallery, recent docs, rename/delete actions
+- **Collaboration Presence** - See who is online in a document with avatar indicators
+- **Comments & Threads** - Create, reply, and resolve comment threads in real-time
+- **Sharing & Permissions** - Invite by email, role management (owner/editor/viewer), revoke access
+- **Version History** - Browse saved versions with author/time/size, restore any version
+- **Autosave** - Periodic autosave to DFS with manual checkpoint control
+- **Distributed Storage** - Document payloads stored in custom Go DFS with encrypted peer replication
+- **Auth & Sessions** - JWT access/refresh tokens with bcrypt password hashing
 
-## DFS Part (Phase 1)
+## Tech Stack
 
-- `dfs/store.go`: content-addressed local storage (CAS path transform, read/write/delete).
-- `dfs/crypto.go`: stream encryption/decryption (`AES-CTR`) for replication payloads.
-- `dfs/p2p/*`: TCP transport, RPC framing, stream/message handling.
-- `dfs/server.go`: distributed file server with peer bootstrap, `Store`, and `Get`.
-- `cmd/dfsnode/main.go`: runnable node (single-node or 3-node demo).
-
-Note: in this repository those files currently live under `distributed_filesys/` and
-`distributed_filesys/peer2peer/`.
+- **Frontend**: React 18, Vite, React Router, TipTap, Yjs, Socket.IO Client
+- **Backend**: Node.js, Express, Socket.IO, Mongoose, Zod, JWT
+- **Database**: MongoDB Atlas
+- **Storage**: Custom Go DFS (content-addressed, AES-CTR encrypted replication)
 
 ## Project Structure
 
 ```text
-cmd/dfsnode/main.go
-dfs/
-	crypto.go
-	messages.go
-	server.go
-	store.go
-	store_test.go
-	p2p/
-		encoding.go
-		handshake.go
-		message.go
-		tcp_transport.go
-		tcp_transport_test.go
+backend/
+  src/
+    app.js                 # Express app setup with middleware
+    server.js              # HTTP server + Socket.IO bootstrap
+    config/env.js          # Environment configuration
+    db/mongoose.js          # MongoDB connection
+    lib/
+      AppError.js          # Structured error classes
+      schemas.js           # Zod validation schemas
+      validate.js          # Validation helper
+    middleware/
+      auth.js              # JWT auth middleware
+      require-doc-access.js # Role-based document access
+      rate-limit.js        # Rate limiting (auth + API)
+      request-id.js        # Correlation ID middleware
+    models/
+      User.js              # User model
+      Session.js           # Refresh token sessions
+      Document.js          # Document metadata
+      DocVersion.js        # Version metadata (DFS pointers)
+      Permission.js        # Document permissions
+      Comment.js           # Comments with embedded replies
+    routes/
+      auth.js              # Register, login, refresh
+      docs.js              # CRUD, search, share, invite, history, restore
+      comments.js          # Comments, replies, resolve
+    services/
+      tokens.js            # JWT creation/verification
+      dfs-client.js        # HTTP client for DFS bridge
+      doc-storage.js       # Version persistence to DFS
+      collab-room.js       # Yjs room state management
+    sockets/
+      collab.js            # Socket.IO event handling
+
+frontend/
+  src/
+    main.jsx               # App entry with Router + AuthProvider
+    App.jsx                # Route definitions
+    context/AuthContext.jsx # Auth state + persistence
+    lib/
+      api.js               # REST API client
+      socket.js            # Socket.IO client
+      SocketIOProvider.js  # Yjs <-> Socket.IO bridge
+    components/
+      Navbar.jsx           # Top navigation bar
+      Editor.jsx           # TipTap editor with Yjs collaboration
+      EditorToolbar.jsx    # Rich text formatting toolbar
+      PresenceAvatars.jsx  # Online collaborator avatars
+      CommentsSidebar.jsx  # Comments panel
+      ShareModal.jsx       # Share/invite modal
+      VersionHistoryPanel.jsx # Version history modal
+    pages/
+      LoginPage.jsx        # Auth page (login/register)
+      DashboardPage.jsx    # Document list, search, templates
+      EditorPage.jsx       # Document editing workspace
+
+distributed_filesys/       # Go DFS implementation
+cmd/dfsbridge/             # DFS HTTP bridge
+cmd/dfsnode/               # DFS node runner
 ```
 
-## Run
+## API Endpoints
 
-```bash
-go test ./...
-go run ./cmd/dfsnode -mode demo3
-```
+### Auth
+- `POST /auth/register` - Create account
+- `POST /auth/login` - Sign in
+- `POST /auth/refresh` - Refresh access token
 
-Single-node mode:
+### Documents
+- `POST /docs` - Create document
+- `GET /docs?q=` - List/search documents
+- `GET /docs/:id` - Get document with latest version
+- `PATCH /docs/:id` - Rename document
+- `DELETE /docs/:id` - Delete document
+- `POST /docs/:id/save` - Save version to DFS
+- `GET /docs/:id/versions` - List versions
+- `GET /docs/:id/history` - Enriched version history
+- `POST /docs/:id/restore` - Restore a version
+- `POST /docs/:id/share` - Share with userId
+- `POST /docs/:id/invite` - Invite by email
+- `GET /docs/:id/collaborators` - List collaborators
+- `DELETE /docs/:id/collaborators/:userId` - Remove access
 
-```bash
-go run ./cmd/dfsnode -mode single -listen :3000
-```
+### Comments
+- `GET /docs/:id/comments` - List comments
+- `POST /docs/:id/comments` - Create comment
+- `POST /docs/:id/comments/:commentId/replies` - Reply
+- `POST /docs/:id/comments/:commentId/resolve` - Resolve
 
-Join an existing node:
+## Socket Events
 
-```bash
-go run ./cmd/dfsnode -mode single -listen :3001 -bootstrap :3000
-```
-
-## Full Project (MERN + Custom DFS + MongoDB Atlas)
-
-This repo now includes a full MVP for collaborative docs where:
-
-- document payloads are stored in the custom DFS via a Go HTTP bridge,
-- auth + metadata + indexing live in MongoDB Atlas,
-- realtime editing is done via Socket.IO + Yjs.
-
-### Added Components
-
-- `cmd/dfsbridge/main.go`: DFS HTTP bridge (`/v1/blobs/:key`)
-- `backend/`: Express + Socket.IO + MongoDB Atlas (auth, docs, versions, permissions)
-- `frontend/`: React + Vite collaborative editor shell
-
-### Architecture Split
-
-- DFS object storage: version blobs and manifests
-- MongoDB Atlas: users, sessions, documents, permissions, doc version metadata
+- `doc:join` / `doc:update` - Yjs document sync
+- `doc:presence:join` / `doc:presence:leave` - Presence
+- `doc:cursor` / `doc:awareness` - Cursor tracking
+- `doc:comment:create` / `doc:comment:reply` / `doc:comment:resolve` - Live comments
 
 ## Local Run Guide
 
@@ -84,29 +129,12 @@ This repo now includes a full MVP for collaborative docs where:
 go run ./cmd/dfsbridge
 ```
 
-Optional env vars:
-
-- `DFS_BRIDGE_PORT` (default `9090`)
-- `DFS_BRIDGE_ROOT` (default `dfs_bridge_data`)
-- `DFS_BRIDGE_NODE_ID` (default `bridge-node`)
-
 ### 2) Start Backend
 
 ```bash
 cd backend
 npm install
-cp .env.example .env
-```
-
-Set required values in `.env`:
-
-- `MONGODB_URI`
-- `JWT_ACCESS_SECRET`
-- `JWT_REFRESH_SECRET`
-
-Run backend:
-
-```bash
+cp .env.example .env   # Set MONGODB_URI, JWT_ACCESS_SECRET, JWT_REFRESH_SECRET
 npm run dev
 ```
 
@@ -121,28 +149,3 @@ npm run dev
 ```
 
 Frontend default: `http://localhost:5173`
-
-## Implemented APIs
-
-- `POST /auth/register`
-- `POST /auth/login`
-- `POST /auth/refresh`
-- `POST /docs`
-- `GET /docs`
-- `GET /docs/:id`
-- `POST /docs/:id/save`
-- `GET /docs/:id/versions`
-- `POST /docs/:id/share`
-
-## Realtime Events
-
-- `doc:join` (request room + initial state)
-- `doc:update` (Yjs update broadcast)
-
-## Go Validation
-
-```bash
-go test ./... -count=1
-```
-
-

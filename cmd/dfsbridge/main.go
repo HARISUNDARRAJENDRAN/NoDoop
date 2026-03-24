@@ -124,7 +124,11 @@ func (b *bridge) handleBlobs(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	port := os.Getenv("DFS_BRIDGE_PORT")
+	// Render and other hosts set PORT; local dev can use DFS_BRIDGE_PORT or default 9090.
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = os.Getenv("DFS_BRIDGE_PORT")
+	}
 	if port == "" {
 		port = "9090"
 	}

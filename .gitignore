@@ -9,7 +9,7 @@ Thumbs.db
 *.swo
 
 /plan.md 
-
+/DEPLOY_RENDER.md
 # Go
 bin/
 coverage.out

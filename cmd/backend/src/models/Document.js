@@ -20,6 +20,20 @@ const documentSchema = new mongoose.Schema(
     updatedAtLogical: {
       type: Date,
       default: Date.now
+    },
+    archivedAt: {
+      type: Date,
+      default: null
+    },
+    starredBy: {
+      type: [mongoose.Schema.Types.ObjectId],
+      ref: "User",
+      default: []
+    },
+    pinnedBy: {
+      type: [mongoose.Schema.Types.ObjectId],
+      ref: "User",
+      default: []
     }
   },
   {
